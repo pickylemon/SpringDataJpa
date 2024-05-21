@@ -58,4 +58,26 @@ public class MemberJpaRepository {
                 .getResultList();
     }
 
+    //순수 JPQL로 페이징하기
+    public List<Member> findByPage(int age, int offset, int limit){
+        String query = "select m from Member m " +
+                " where m.age = :age" +
+                " order by m.username desc";
+        return em.createQuery(query, Member.class)
+                    .setParameter("age", age)
+                    .setFirstResult(offset)
+                    .setMaxResults(limit)
+                    .getResultList();
+    }
+
+    //페이징에는 항상 total count가 필요함
+    public long totalCount(int age){
+        String query = "select count(m) from Member m " +
+                " where m.age = :age";
+
+        return em.createQuery(query, Long.class)
+                .setParameter("age", age)
+                .getSingleResult();
+    }
+
 }

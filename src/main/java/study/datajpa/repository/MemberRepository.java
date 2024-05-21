@@ -8,6 +8,7 @@ import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
 
 import java.util.List;
+import java.util.Optional;
 
 /*
 SpringDataJpa 사용하기
@@ -51,6 +52,17 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             " join m.team t")
     List<MemberDto> findMemberDto();
 
+    //파라미터 바인딩 - IN절의 활용
+    @Query("select m from Member m " +
+            " where m.username in :names") //IN절이니까 = 대신 IN키워드
+    List<Member> findByNames(@Param("names") List<String> names);
+
+    //유연한 반환타입 - 1. List 또는 컬렉션
+    List<Member> findListByUsername(String username);
+    //유연한 반환타입 - 2. 객체 단건 조회
+    Member findMemberByUsername(String username);
+    //유연한 반환타입 - 3. 단건을 Optional로 반환
+    Optional<Member> findOptionalByUsername(String username);
 
 
 }

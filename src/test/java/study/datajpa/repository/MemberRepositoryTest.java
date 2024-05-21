@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 import study.datajpa.dto.MemberDto;
@@ -163,4 +164,62 @@ class MemberRepositoryTest {
         List<MemberDto> memberDto = memberRepository.findMemberDto();
         memberDto.forEach(System.out::println);
     }
+
+    @Test
+    @DisplayName("@Query에 in절 포함시키기")
+    public void findByNames(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("BBB", 20);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+
+        List<String> names = List.of("AAA", "BBB");
+        List<Member> byNames = memberRepository.findByNames(names);
+        Assertions.assertThat(byNames).size().isEqualTo(2);
+        Assertions.assertThat(byNames).contains(m1, m2);
+    }
+
+    @Test
+    @DisplayName("유연한 반환타입")
+    public void returnTypes(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("BBB", 20);
+        Member m3 = new Member("AAA", 30);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+        memberRepository.save(m3);
+
+        List<Member> findMemberList = memberRepository.findListByUsername("AAA");
+        Member findMember = memberRepository.findMemberByUsername("BBB");
+        Optional<Member> optional = memberRepository.findOptionalByUsername("BBB");
+
+
+        //주목!!
+
+        //1. 단건 조회 메서드 사용했는데 resultSize != 1 (resultSize > 1) : Exception 발생
+        //Member findmember2 = memberRepository.findMemberByUsername("AAA");
+        //IncorrectResultSizeDataAccessException: Query did not return a unique result: 2 results were returned
+        //단건 조회가 보장이 되지 않는 상황에서 단건 반환 메서드를 사용하면 Exception발생
+        //원래 발생하는 예외는 NonUniqueResultException. Spring이 한번 감싸서 IncorrectResultSizeDataAccessException으로 던짐
+        //예외가 Repository vendor에 종속되지 않도록(예외를 받는 서비스 계층까지 vendor에 종속되므로) 추상화하는 것.
+        Assertions.assertThatThrownBy(()-> memberRepository.findMemberByUsername("AAA"))
+                .isInstanceOf(IncorrectResultSizeDataAccessException.class);
+
+        //2. 단건 조회 메서드 사용했는데 resultSize != 1 (resultSize == 0)
+        //순수 JPA는 NoResultException이 발생하는데, SpringDataJPA는 내부적으로 try-catch로 예외처리 후 null을 반환
+        Member findMember3 = memberRepository.findMemberByUsername("qweradsffadf");
+        Assertions.assertThat(findMember3).isNull();
+
+        //3. 컬렉션 반환 메서드 사용시, 반환되는 데이터가 없어도 null 아님. 예외 발생하지 않음.
+        //빈 컬렉션을 그대로 반환
+        //조회 된 건이 없어도 컬렉션은 null을 반환하지 않는다. 빈 컬렉션을 반환할 뿐
+        List<Member> findMemberList2 = memberRepository.findListByUsername("qwerqefadf");
+        Assertions.assertThat(findMemberList2).isNotNull();
+        Assertions.assertThat(findMemberList2).isEmpty();
+
+    }
+
+
 }

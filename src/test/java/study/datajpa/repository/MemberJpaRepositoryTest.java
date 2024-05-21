@@ -12,7 +12,9 @@ import study.datajpa.entity.Member;
 import study.datajpa.repository.MemberJpaRepository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest //JUnit5부터는 @RunWith등의 어노테이션 생략 가능
@@ -88,8 +90,8 @@ class MemberJpaRepositoryTest {
 
         List<Member> result = memberJpaRepository.findByUsernameAndGreaterThan("AAA", 15);
 
-        Assertions.assertThat(result).size().isEqualTo(1);
-        Assertions.assertThat(result.get(0)).isEqualTo(m2);
+        assertThat(result).size().isEqualTo(1);
+        assertThat(result.get(0)).isEqualTo(m2);
     }
 
     @Test
@@ -101,7 +103,36 @@ class MemberJpaRepositoryTest {
         memberJpaRepository.save(m2);
 
         List<Member> byUsername = memberJpaRepository.findByUsername("AAA");
-        Assertions.assertThat(byUsername).size().isEqualTo(2);
-        Assertions.assertThat(byUsername).contains(m1, m2);
+        assertThat(byUsername).size().isEqualTo(2);
+        assertThat(byUsername).contains(m1, m2);
+    }
+
+    @Test
+    @DisplayName("JPQL 페이징 테스트")
+    public void paging(){
+        //given
+        for(int i=1; i<=10; i++){
+            memberJpaRepository.save(new Member("member"+i, i%2));
+        }
+
+        int age = 1;
+        int offset = 1;
+        int limit = 2;
+
+        //when
+        List<Member> byPage = memberJpaRepository.findByPage(age, offset, limit);
+        long totalCnt = memberJpaRepository.totalCount(age);
+
+        //then
+        byPage.forEach(System.out::println);
+        System.out.println("totalCnt = " + totalCnt);
+        //order by가 username desc으로 되어 있음에 주의
+
+        assertThat(byPage).size().isEqualTo(2);
+        assertThat(byPage.stream().map(Member::getUsername).collect(toList()))
+                .contains("member7", "member5");
+        assertThat(totalCnt).isEqualTo(5);
+
+
     }
 }
