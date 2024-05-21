@@ -1,6 +1,7 @@
 package study.datajpa.repository;
 
 import jakarta.persistence.EntityManager;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,5 +76,32 @@ class MemberJpaRepositoryTest {
         List<Member> afterDelete = memberJpaRepository.findAll();
         assertThat(afterDelete.size()).isEqualTo(0);
         assertThat(afterDelete).isEmpty();
+    }
+
+    @Test
+    void findByUsernameAndGreaterThan(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("AAA", 20);
+
+        memberJpaRepository.save(m1);
+        memberJpaRepository.save(m2);
+
+        List<Member> result = memberJpaRepository.findByUsernameAndGreaterThan("AAA", 15);
+
+        Assertions.assertThat(result).size().isEqualTo(1);
+        Assertions.assertThat(result.get(0)).isEqualTo(m2);
+    }
+
+    @Test
+    public void testNamedQuery(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("AAA", 20);
+
+        memberJpaRepository.save(m1);
+        memberJpaRepository.save(m2);
+
+        List<Member> byUsername = memberJpaRepository.findByUsername("AAA");
+        Assertions.assertThat(byUsername).size().isEqualTo(2);
+        Assertions.assertThat(byUsername).contains(m1, m2);
     }
 }

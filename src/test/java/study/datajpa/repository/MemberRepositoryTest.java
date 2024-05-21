@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
+import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
+import study.datajpa.entity.Team;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MemberRepositoryTest {
     @Autowired
     private MemberRepository memberRepository;
+    @Autowired
+    private TeamRepository teamRepository;
     @Autowired
     EntityManager em;
 
@@ -82,5 +86,81 @@ class MemberRepositoryTest {
         List<Member> afterDelete = memberRepository.findAll();
         assertThat(afterDelete.size()).isEqualTo(0);
         assertThat(afterDelete).isEmpty();
+    }
+    @Test
+    void findByUsernameAndGreaterThan(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("AAA", 20);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+
+        List<Member> result = memberRepository.findByUsernameAndAgeGreaterThan("AAA", 15);
+
+        Assertions.assertThat(result).size().isEqualTo(1);
+        Assertions.assertThat(result.get(0)).isEqualTo(m2);
+    }
+
+    @Test
+    public void findHelloBy(){
+        List<Member> top3HelloBy = memberRepository.findTop3HelloBy();
+        Assertions.assertThat(top3HelloBy).size().isEqualTo(2);
+    }
+
+    @Test
+    public void namedQuery(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("AAA", 20);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+
+        List<Member> byUsername = memberRepository.findByUsername("AAA");
+        Assertions.assertThat(byUsername).size()
+                .isEqualTo(2);
+        Assertions.assertThat(byUsername).contains(m1, m2);
+    }
+    @Test
+    public void testQuery(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("AAA", 20);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+
+        List<Member> byUsername = memberRepository.findUser("AAA", 20);
+        Assertions.assertThat(byUsername).size().isEqualTo(1);
+        Assertions.assertThat(byUsername.get(0)).isEqualTo(m2);
+    }
+
+    @Test
+    public void SimpleValueQueryTest(){
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("BBB", 20);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+
+        List<String> usernameList = memberRepository.findUsernameList();
+        Assertions.assertThat(usernameList).contains("AAA","BBB");
+    }
+
+    @Test
+    public void DtoQueryTest(){
+        Team t1 = new Team("team1");
+        Team t2 = new Team("team2");
+        teamRepository.save(t1);
+        teamRepository.save(t2);
+
+        Member m1 = new Member("AAA", 10);
+        Member m2 = new Member("BBB", 20);
+        m1.changeTeam(t1);
+        m2.changeTeam(t2);
+
+        memberRepository.save(m1);
+        memberRepository.save(m2);
+
+        List<MemberDto> memberDto = memberRepository.findMemberDto();
+        memberDto.forEach(System.out::println);
     }
 }

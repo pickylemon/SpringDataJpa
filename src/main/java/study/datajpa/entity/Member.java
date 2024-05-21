@@ -7,6 +7,10 @@ import lombok.*;
 @Getter @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @ToString(of = {"id", "username", "age"})
+@NamedQuery(
+        name="Member.findByUsername", //관례상 Entity명.메서드명
+        query="select m from Member m where m.username = :username"
+)
 //연관관계 필드는 toString에 포함시키지 않는다. 무한루프에 빠질 수 있음
 public class Member {
     @Id

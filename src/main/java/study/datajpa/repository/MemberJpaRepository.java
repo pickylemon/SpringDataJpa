@@ -41,4 +41,21 @@ public class MemberJpaRepository {
         em.remove(member);
     }
 
+    public List<Member> findByUsernameAndGreaterThan(String username, int age){
+        return em.createQuery("select m from Member m " +
+                "where m.username = :username and m.age > :age", Member.class)
+                .setParameter("username", username)
+                .setParameter("age", age)
+                .getResultList();
+    }
+
+    //Named쿼리 사용법
+    //1. Entity에 @NamedQuery작성
+    //2. Repository에서 createNamedQuery메서드에 인자로 NamedQuery이름과 반환 타입 넣기
+    public List<Member> findByUsername(String username){
+        return em.createNamedQuery("Member.findByUsername", Member.class)
+                .setParameter("username", username)
+                .getResultList();
+    }
+
 }
