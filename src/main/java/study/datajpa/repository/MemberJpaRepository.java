@@ -80,4 +80,13 @@ public class MemberJpaRepository {
                 .getSingleResult();
     }
 
+    //모든 회원 나이를 한번에 변경하기
+     public int bulkAgePlus(int age){
+        String query = "update Member m set m.age = m.age + 1 " +
+                " where m.age >= :age";
+        return em.createQuery(query)
+                .setParameter("age",age)
+                .executeUpdate(); //update, delete는 executeUpdate 실행
+    }
+
 }

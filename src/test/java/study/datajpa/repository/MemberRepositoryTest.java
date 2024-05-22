@@ -1,6 +1,7 @@
 package study.datajpa.repository;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class MemberRepositoryTest {
     private MemberRepository memberRepository;
     @Autowired
     private TeamRepository teamRepository;
-    @Autowired
+    @PersistenceContext
     EntityManager em;
 
     @Test
@@ -318,5 +319,60 @@ class MemberRepositoryTest {
 //        assertThat(slice.getTotalPages()).isEqualTo(2);
         assertThat(slice.isFirst()).isTrue();
         assertThat(slice.hasNext()).isTrue();
+    }
+
+    @Test
+    public void bulkUpdate(){
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 20));
+        memberRepository.save(new Member("member3", 30));
+        memberRepository.save(new Member("member4", 40));
+        memberRepository.save(new Member("member5", 50));
+
+        //when
+        int rowCnt = memberRepository.bulkAgePlus(30);
+
+        Member findMember3 = memberRepository.findMemberByUsername("member3");
+
+        //then
+        assertThat(rowCnt).isEqualTo(3);
+        assertThat(findMember3.getAge()).isEqualTo(30);
+        assertThat(findMember3.getAge()).isNotEqualTo(31);
+        //벌크성 수정 쿼리는 영속성 컨텍스트를 무시하고 바로 쿼리를 날려버리기 때문에
+        //영속성 컨텍스트 상태와의 동기화가 깨질 수 있다.
+        //update쿼리로 사실 member3의 age는 31로 수정되었으나
+        //영속성 컨텍스트에서는 계속 30인 상태
+
+        //@Modifying(clearAutomatically = true)로 설정하면 em.flush(), em.clear()해주지 않아도 됨.
+    }
+
+    @Test
+    public void bulkUpdate2(){
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 20));
+        memberRepository.save(new Member("member3", 30));
+        memberRepository.save(new Member("member4", 40));
+        memberRepository.save(new Member("member5", 50));
+
+        //when
+        int rowCnt = memberRepository.bulkAgePlus(30);
+
+//        em.flush();
+//        em.clear();
+        //벌크성 쿼리를 수행한 후에는 강제로 영속성 컨텍스트를 초기화해주어야 한다.
+        //아니면, 영속성 컨텍스트가 세팅되기 전에 벌크성 쿼리를 수행하든가.
+
+        //@Modifying(clearAutomatically = true)로 설정하면 em.flush(), em.clear()해주지 않아도 됨.
+
+        Member findMember3 = memberRepository.findMemberByUsername("member3");
+
+        //then
+        assertThat(rowCnt).isEqualTo(3);
+        assertThat(findMember3.getAge()).isEqualTo(31);
+
+
+
     }
 }
