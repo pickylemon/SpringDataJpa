@@ -371,8 +371,111 @@ class MemberRepositoryTest {
         //then
         assertThat(rowCnt).isEqualTo(3);
         assertThat(findMember3.getAge()).isEqualTo(31);
-
-
-
     }
+
+    @Test
+    public void findMemberLazy(){
+        //given
+        //member1 -> teamA
+        //member2 -> teamB
+
+        Team teamA = new Team("teamA");
+        Team teamB = new Team("teamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member2", 10, teamB);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        //when
+        List<Member> all = memberRepository.findAll();
+
+        for (Member member : all) {
+            System.out.println("member.getUsername() = " + member.getUsername());
+            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+            //team을 직접 참조하기 전까지는 team 쿼리를 날리지 않는다. team은 프록시 객체로 가져옴.
+            System.out.println("=================");
+            //N+1문제. lazy loading이기 때문에 team이 필요할 때 다시 쿼리를 날린다.
+            System.out.println("member.getTeam().getName() = " + member.getTeam().getName());
+
+            //@EntityGraph붙이고 findAll을 @Override하면
+            //알아서 fetch join이 된다.
+
+        }
+    }
+
+    @Test
+    @DisplayName("fetch join 테스트")
+    public void findMemberLazy2(){
+        //given
+        //member1 -> teamA
+        //member2 -> teamB
+
+        Team teamA = new Team("teamA");
+        Team teamB = new Team("teamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member2", 10, teamB);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        //when
+        List<Member> all = memberRepository.findMemberFetchJoin();
+
+        for (Member member : all) {
+            System.out.println("member.getUsername() = " + member.getUsername());
+            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+            //fetch join이므로 프록시가 아니라 진짜 객체
+            System.out.println("=================");
+            //N+1문제 없음
+            System.out.println("member.getTeam().getName() = " + member.getTeam().getName());
+
+//            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+
+        }
+    }
+
+    @Test
+    @DisplayName("@EntityGraph 사용")
+    public void findMemberLazy3(){
+        //given
+        //member1 -> teamA
+        //member2 -> teamB
+
+        Team teamA = new Team("teamA");
+        Team teamB = new Team("teamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member1", 20, teamB);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        //when
+        List<Member> all = memberRepository.findEntityGraphByUsername("member1");
+
+        for (Member member : all) {
+            System.out.println("member.getUsername() = " + member.getUsername());
+            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+            //fetch join이므로 프록시가 아니라 진짜 객체
+            System.out.println("=================");
+            //N+1문제 없음
+            System.out.println("member.getTeam().getName() = " + member.getTeam().getName());
+
+//            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+
+        }
+    }
+
 }
