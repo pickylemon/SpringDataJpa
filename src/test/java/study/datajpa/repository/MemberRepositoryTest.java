@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 import study.datajpa.dto.MemberDto;
@@ -16,6 +20,8 @@ import study.datajpa.entity.Team;
 import java.util.List;
 import java.util.Optional;
 
+import static java.util.stream.Collectors.toList;
+import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -44,10 +50,10 @@ class MemberRepositoryTest {
 //        Member findMember = memberRepository.findById(member.getId()).get();
         //then
 //        Assertions.assertThat(findMember).isEqualTo(member);
-        Assertions.assertThat(findMember).isNotEmpty();
-        Assertions.assertThat(findMember.get().getId()).isEqualTo(member.getId());
-        Assertions.assertThat(findMember.get().getUsername()).isEqualTo(member.getUsername());
-        Assertions.assertThat(findMember.get()).isEqualTo(member);
+        assertThat(findMember).isNotEmpty();
+        assertThat(findMember.get().getId()).isEqualTo(member.getId());
+        assertThat(findMember.get().getUsername()).isEqualTo(member.getUsername());
+        assertThat(findMember.get()).isEqualTo(member);
         //같은 Tx내이기때문에 영속성 컨텍스트에서 가져와서 같다.(동일성 보장)
     }
 
@@ -98,14 +104,14 @@ class MemberRepositoryTest {
 
         List<Member> result = memberRepository.findByUsernameAndAgeGreaterThan("AAA", 15);
 
-        Assertions.assertThat(result).size().isEqualTo(1);
-        Assertions.assertThat(result.get(0)).isEqualTo(m2);
+        assertThat(result).size().isEqualTo(1);
+        assertThat(result.get(0)).isEqualTo(m2);
     }
 
     @Test
     public void findHelloBy(){
         List<Member> top3HelloBy = memberRepository.findTop3HelloBy();
-        Assertions.assertThat(top3HelloBy).size().isEqualTo(2);
+        assertThat(top3HelloBy).size().isEqualTo(2);
     }
 
     @Test
@@ -117,9 +123,9 @@ class MemberRepositoryTest {
         memberRepository.save(m2);
 
         List<Member> byUsername = memberRepository.findByUsername("AAA");
-        Assertions.assertThat(byUsername).size()
+        assertThat(byUsername).size()
                 .isEqualTo(2);
-        Assertions.assertThat(byUsername).contains(m1, m2);
+        assertThat(byUsername).contains(m1, m2);
     }
     @Test
     public void testQuery(){
@@ -130,8 +136,8 @@ class MemberRepositoryTest {
         memberRepository.save(m2);
 
         List<Member> byUsername = memberRepository.findUser("AAA", 20);
-        Assertions.assertThat(byUsername).size().isEqualTo(1);
-        Assertions.assertThat(byUsername.get(0)).isEqualTo(m2);
+        assertThat(byUsername).size().isEqualTo(1);
+        assertThat(byUsername.get(0)).isEqualTo(m2);
     }
 
     @Test
@@ -143,7 +149,7 @@ class MemberRepositoryTest {
         memberRepository.save(m2);
 
         List<String> usernameList = memberRepository.findUsernameList();
-        Assertions.assertThat(usernameList).contains("AAA","BBB");
+        assertThat(usernameList).contains("AAA","BBB");
     }
 
     @Test
@@ -176,8 +182,8 @@ class MemberRepositoryTest {
 
         List<String> names = List.of("AAA", "BBB");
         List<Member> byNames = memberRepository.findByNames(names);
-        Assertions.assertThat(byNames).size().isEqualTo(2);
-        Assertions.assertThat(byNames).contains(m1, m2);
+        assertThat(byNames).size().isEqualTo(2);
+        assertThat(byNames).contains(m1, m2);
     }
 
     @Test
@@ -204,22 +210,113 @@ class MemberRepositoryTest {
         //단건 조회가 보장이 되지 않는 상황에서 단건 반환 메서드를 사용하면 Exception발생
         //원래 발생하는 예외는 NonUniqueResultException. Spring이 한번 감싸서 IncorrectResultSizeDataAccessException으로 던짐
         //예외가 Repository vendor에 종속되지 않도록(예외를 받는 서비스 계층까지 vendor에 종속되므로) 추상화하는 것.
-        Assertions.assertThatThrownBy(()-> memberRepository.findMemberByUsername("AAA"))
+        assertThatThrownBy(()-> memberRepository.findMemberByUsername("AAA"))
                 .isInstanceOf(IncorrectResultSizeDataAccessException.class);
 
         //2. 단건 조회 메서드 사용했는데 resultSize != 1 (resultSize == 0)
         //순수 JPA는 NoResultException이 발생하는데, SpringDataJPA는 내부적으로 try-catch로 예외처리 후 null을 반환
         Member findMember3 = memberRepository.findMemberByUsername("qweradsffadf");
-        Assertions.assertThat(findMember3).isNull();
+        assertThat(findMember3).isNull();
 
         //3. 컬렉션 반환 메서드 사용시, 반환되는 데이터가 없어도 null 아님. 예외 발생하지 않음.
         //빈 컬렉션을 그대로 반환
         //조회 된 건이 없어도 컬렉션은 null을 반환하지 않는다. 빈 컬렉션을 반환할 뿐
         List<Member> findMemberList2 = memberRepository.findListByUsername("qwerqefadf");
-        Assertions.assertThat(findMemberList2).isNotNull();
-        Assertions.assertThat(findMemberList2).isEmpty();
+        assertThat(findMemberList2).isNotNull();
+        assertThat(findMemberList2).isEmpty();
 
     }
 
+    @Test
+    @DisplayName("springDataJPA 페이징 테스트 - Page")
+    public void paging() {
+        //given
+        for (int i = 1; i <= 10; i++) {
+            memberRepository.save(new Member("member" + i, i % 2));
+        }
 
+        int age = 1;
+        //스프링 data JPA의 페이지는 0부터 시작이다! 주의하기.
+        PageRequest pageRequest = PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "username"));
+
+
+        //when
+        Page<Member> page = memberRepository.findByAge(age, pageRequest);
+        //String query = "select m from Member m " +
+        //        " where m.age = :age" +
+        //       " order by m.username desc";  기존 쿼리에 맞추기 위해 Sort.Direction.DESC 추가
+
+
+        //totalCnt는 따로 가져올 필요 없다. 반환타입이 Page임을 보고 알아서 쿼리 날려줌
+
+        //참고 엔티티는 절대 외부로 노출해서는 안된다. API에서 엔티티를 그대로 반환해서는 안됨!!!
+        //Page<Member>도 Page<MemberDto>로 변환해야함
+        Page<MemberDto> dtoPage = page.map(MemberDto::new); //memberDto에 Member를 받는 생성자 만들어 둠.
+        Page<MemberDto> dtoPage2 = page.map(member ->
+            new MemberDto(member.getId(), member.getUsername(), null)
+        ); //member의 team이 아직 null이라면..
+
+        //then
+        List<Member> content = page.getContent();
+        long totalElements = page.getTotalElements();
+        content.forEach(System.out::println);
+        System.out.println("totalElements = " + totalElements);
+
+        assertThat(content).size().isEqualTo(3);
+        assertThat(totalElements).isEqualTo(5);
+        assertThat(content
+                .stream()
+                .map(Member::getUsername)
+                .collect(toList())).contains("member9", "member7", "member5");
+
+        //여러가지 페이징 테스트도 가능
+        assertThat(page.getNumber()).isEqualTo(0);
+        assertThat(page.getTotalPages()).isEqualTo(2);
+        assertThat(page.isFirst()).isTrue();
+        assertThat(page.hasNext()).isTrue();
+    }
+    @Test
+    @DisplayName("springDataJPA 페이징 테스트 - Slice")
+    public void paging2() {
+        //given
+        for (int i = 1; i <= 10; i++) {
+            memberRepository.save(new Member("member" + i, i % 2));
+        }
+
+        int age = 1;
+        //1. 스프링 data JPA의 페이지는 0부터 시작이다! 주의하기.
+        //2. Slice는 totalCnt 계산하지 않는다.
+        //3. 실제 나가는 limit는 pageSize + 1 (하나 더 요청한다. -> 더보기가 +1에 해당)
+        PageRequest pageRequest = PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "username"));
+
+
+        //when
+        Slice<Member> slice = memberRepository.findSliceByAge(age, pageRequest);
+        //String query = "select m from Member m " +
+        //        " where m.age = :age" +
+        //       " order by m.username desc";  기존 쿼리에 맞추기 위해 Sort.Direction.DESC 추가
+
+        //totalCnt는 따로 가져올 필요 없다. 반환타입이 Page임을 보고 알아서 쿼리 날려줌
+
+        //then
+        List<Member> content = slice.getContent();
+        //long totalElements = slice.getTotalElements();
+        //slice는 totalCnt 계산하지 않는다.
+
+        content.forEach(System.out::println);
+//        System.out.println("totalElements = " + totalElements);
+
+        assertThat(content).size().isEqualTo(3);
+//        assertThat(totalElements).isEqualTo(5);
+        assertThat(content
+                .stream()
+                .map(Member::getUsername)
+                .collect(toList())).contains("member9", "member7", "member5");
+
+        //여러가지 페이징 테스트도 가능
+        assertThat(slice.getNumber()).isEqualTo(0);
+//        assertThat(slice.getTotalPages()).isEqualTo(2);
+        assertThat(slice.isFirst()).isTrue();
+        assertThat(slice.hasNext()).isTrue();
+    }
 }

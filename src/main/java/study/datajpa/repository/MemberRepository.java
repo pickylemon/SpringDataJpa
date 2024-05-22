@@ -1,5 +1,8 @@
 package study.datajpa.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -63,6 +66,14 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Member findMemberByUsername(String username);
     //유연한 반환타입 - 3. 단건을 Optional로 반환
     Optional<Member> findOptionalByUsername(String username);
+
+    //스프링 Data JPA의 페이징 추상화
+    //검색 조건과 Pageable인터페이스만 넘기면된다. (PageRequest는 Pageable의 구현체)
+    @Query(countQuery = "select count(m) from Member m")
+    Page<Member> findByAge(int age, Pageable pageable);
+    //참고 엔티티는 절대 외부로 노출해서는 안된다. API에서 엔티티를 그대로 반환해서는 안됨!!!
+    //Page<Member>도 Page<MemberDto>로 변환해야함
+    Slice<Member> findSliceByAge(int age, Pageable pageable);
 
 
 }
